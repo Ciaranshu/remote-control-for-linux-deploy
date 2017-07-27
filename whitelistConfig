@@ -1,0 +1,11 @@
+ls -l;
+ll;
+pwd;
+cd ~/p2p/;
+cd /home/xiaoyong/p2p/;
+sh deploy.sh;
+cat deploy.sh;
+sh restart_p2p_service.sh;
+ps aux|grep kw-live;
+cat restart_p2p_service.sh;
+sh test.sh
