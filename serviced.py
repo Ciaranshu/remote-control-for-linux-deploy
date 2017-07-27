@@ -91,7 +91,9 @@ class Daemon:
             while 1:
                 os.kill(pid, SIGTERM)
                 time.sleep(0.1)
+                os.system('rm /tmp/watch_process.pid')
                 os.system('killall python dnion_service.py')
+                print "Stop successfully"
         except OSError, err:
             err = str(err)
             if err.find('No such process') > 0:
@@ -108,6 +110,7 @@ class Daemon:
     def _run(self):
         while True:
             os.system('python dnion_service.py 127.0.0.1')
+            print "Start successfully"
             os.wait()
 
 
