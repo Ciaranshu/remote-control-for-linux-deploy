@@ -1,23 +1,41 @@
 #_*_ coding: utf-8 _*_
-import socket, sys, traceback, time
+import socket, sys, traceback, time,re
 from thread import *
 
+port = 40217
 End = "Done"
 total_reply=[]
+reip = re.compile(r'(?<![\.\d])(?:\d{1,3}\.){3}\d{1,3}(?![\.\d])')
+
+
+# test: connect to server
 
 #create socket
-try:
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-except socket.error, msg:
-    print ('Failed to create socket, Error code: ' + str(msg[0]) + ',Error  message :' + msg[1] )
-    sys.exit()
+def selectMode():
 
-print ('Socket created successfully')
+    while True:
+        cmd = raw_input("Supported modes:\n 1. Connect [ip address]\n 2. Execute [script file path] \n (exit command for close this session):\n")
+        if 'connect' in cmd:
+            host = str(reip.findall(cmd)[0])
+            cmdmode(connect(host, port))
+        if 'execute' in cmd:
+            deployScript = open(cmd[8:], 'r')
+            host = str(reip.findall(deployScript.readline())[0])
+            s = connect(host, port)
+            for line in deployScript:
+                if re.match(reip, str(line)) is not None:
+                    s.close()
+                    print ("connection closed!\n\n")
+                    host = str(reip.findall(line)[0])
+                    s = connect(host, port)
+                else:
+                    scriptMode(s, str(line))
 
-#test: connect to server
-host = sys.argv[1]
-port = 40217
-hosts = ["127.0.0.1",]
+        elif 'exit' in cmd:
+            break
+        else:
+            print "unsupported modes, please input again.\n"
+
 #脚本参数提供需要执行的command
 #command = sys.argv[2]
 
@@ -28,50 +46,90 @@ hosts = ["127.0.0.1",]
 #    sys.exit()
 #print ('Ip address of ' + host + ' is ' + remote_ip)
 
-def execute(host,port):
+def connect(host,port):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error, msg:
+        print ('Failed to create socket, Error code: ' + str(msg[0]) + ',Error  message :' + msg[1])
+        sys.exit()
+
+    print ('Socket created successfully')
     try:
         s.connect((host,port))
     except Exception,e:
         msg = traceback.format_exc()
         print ("connect error: " + msg)
-    print ('Socket Connected to ' + host)
+    print ("Connecting to %s:%d now." % (host, port))
 
-    #wait for command from cmd  and send it
+    return s
+
+
+def cmdmode(s):
+    # wait for command from cmd  and send it
     while True:
         command = raw_input("Please input command(exit command for close this session):\n")
         if command == "exit":
             print ("Bye bye!")
             break
-
         if not command:
             print ("command is empty,please input again:")
             continue
         s.send(command)
-        s.setblocking(1)                    #防止recv一直在等待数据阻塞主线程
+        s.setblocking(1)  # 防止recv一直在等待数据阻塞主线程
 
-        #等待时间看能否改变
+        # 等待时间看能否改变
         time.sleep(1)
         print ("\033[1;32;40m reply from server: \033[0m")
-        print ("\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
+        print (
+        "\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
         while 1:
             time.sleep(1)
             try:
                 reply = s.recv(4096)
-            except Exception,e:
-                print ("\033[1;32;40m------------------------------------------------------------------------------------------ \033[0m")
+            except Exception, e:
+                print (
+                "\033[1;32;40m------------------------------------------------------------------------------------------ \033[0m")
                 print ("\033[1;31;40m recv except error\033[0m")
                 break
             if "Done" in reply:
-
                 print (
-                "\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
+                    "\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
                 break
             print ("\033[1;32;40m" + reply + "\033[0m")
 
+    s.close()
+    print ("connection closed!\n\n")
 
-print ("Connecting to %s:%d now."% (host,port))
-execute(host,port)
+def scriptMode(s,command):
+    # wait for command from cmd  and send it
+
+    if not command:
+        print ("command is empty,please input again:")
+
+    s.send(command)
+    s.setblocking(1)  # 防止recv一直在等待数据阻塞主线程
+
+    # 等待时间看能否改变
+    time.sleep(1)
+    print ("\033[1;32;40m reply from server: \033[0m")
+    print (
+    "\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
+    while 1:
+        time.sleep(1)
+        try:
+            reply = s.recv(4096)
+        except Exception, e:
+            print (
+            "\033[1;32;40m------------------------------------------------------------------------------------------ \033[0m")
+            print ("\033[1;31;40m recv except error\033[0m")
+            break
+        if "Done" in reply:
+            print (
+                "\033[1;32;40m------------------------------------------------------------------------------------------- \033[0m")
+            break
+        print ("\033[1;32;40m" + reply + "\033[0m")
 
 
-s.close()
-print ("connection closed!")
+
+selectMode()
+
