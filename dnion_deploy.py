@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #_*_ coding: utf-8 _*_
 import socket, sys, traceback, time,re
 from thread import *
@@ -8,9 +9,6 @@ total_reply=[]
 reip = re.compile(r'(?<![\.\d])(?:\d{1,3}\.){3}\d{1,3}(?![\.\d])')
 
 
-# test: connect to server
-
-#create socket
 def selectMode():
 
     while True:
@@ -22,14 +20,23 @@ def selectMode():
             deployScript = open(cmd[8:], 'r')
             host = str(reip.findall(deployScript.readline())[0])
             s = connect(host, port)
+            flag = 0
             for line in deployScript:
                 if re.match(reip, str(line)) is not None:
+                    flag = 0
                     s.close()
                     print ("connection closed!\n\n")
-                    host = str(reip.findall(line)[0])
-                    s = connect(host, port)
+                    try:
+                        host = str(reip.findall(line)[0])
+                        s = connect(host, port)
+                    except:
+                        print ("\033[1;31;40m Error connect" + host + "\033[0m")
+                        flag = 1
+                        continue
+
                 else:
-                    scriptMode(s, str(line))
+                    if flag == 0:
+                        scriptMode(s, str(line))
 
         elif 'exit' in cmd:
             break
@@ -46,6 +53,8 @@ def selectMode():
 #    sys.exit()
 #print ('Ip address of ' + host + ' is ' + remote_ip)
 
+
+
 def connect(host,port):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -54,11 +63,8 @@ def connect(host,port):
         sys.exit()
 
     print ('Socket created successfully')
-    try:
-        s.connect((host,port))
-    except Exception,e:
-        msg = traceback.format_exc()
-        print ("connect error: " + msg)
+
+    s.connect((host,port))
     print ("Connecting to %s:%d now." % (host, port))
 
     return s
@@ -99,6 +105,7 @@ def cmdmode(s):
 
     s.close()
     print ("connection closed!\n\n")
+
 
 def scriptMode(s,command):
     # wait for command from cmd  and send it
